@@ -9,8 +9,8 @@ enable_testing()
 
 function(generateDepsTargets)
     ExternalProject_Add(
-            gtest
-            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/deps/gtest
+            libgtest
+            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/deps/libgtest
             GIT_REPOSITORY https://github.com/google/googletest.git
             UPDATE_COMMAND git checkout release-1.7.0
             CONFIGURE_COMMAND ""
@@ -18,24 +18,42 @@ function(generateDepsTargets)
             INSTALL_COMMAND ""
             BUILD_IN_SOURCE 1
     )
-
-    set(GTEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/deps/gtest/src/gtest)
+    set(GTEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/deps/libgtest/src/libgtest)
     set(GTEST_LIB_DIR ${GTEST_DIR}/build PARENT_SCOPE)
     set(GTEST_INC_DIR ${GTEST_DIR}/include PARENT_SCOPE)
+
+
+    ExternalProject_Add(
+            libpcap
+            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/deps/libpcap
+            GIT_REPOSITORY https://github.com/the-tcpdump-group/libpcap.git
+            UPDATE_COMMAND git checkout libpcap-1.10.0
+            CONFIGURE_COMMAND ./configure --disable-dbus --disable-usb --disable-bluetooth
+            BUILD_COMMAND make
+            INSTALL_COMMAND ""
+            BUILD_IN_SOURCE 1
+    )
+    set(LIBPCAP_DIR ${CMAKE_CURRENT_BINARY_DIR}/deps/libpcap/src/libpcap)
+    set(LIBPCAP_LIB_DIR ${LIBPCAP_DIR} PARENT_SCOPE)
+    set(LIBPCAP_INC_DIR ${LIBPCAP_DIR} PARENT_SCOPE)
 endfunction()
 
 
 function(generateMain)
     add_executable(h2isto Main.cpp)
+    target_include_directories(h2isto PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR})
+    target_link_libraries(h2isto PRIVATE
+            ${LIBPCAP_LIB_DIR}/libpcap.a
+            pthread)
 endfunction()
 
 function(generateUnitTestTargets)
-    message("gtest include dir will be ${GTEST_INC_DIR}")
     add_executable(utests utests/UTests.cpp)
-    target_include_directories(utests PRIVATE ${GTEST_INC_DIR})
+    target_include_directories(utests PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR})
     target_link_libraries(utests PRIVATE
             ${GTEST_LIB_DIR}/libgtest_main.a
             ${GTEST_LIB_DIR}/libgtest.a
+            ${LIBPCAP_LIB_DIR}/libpcap.a
             pthread)
 endfunction()
 

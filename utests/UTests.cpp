@@ -3,6 +3,7 @@
 //
 
 #include <gtest/gtest.h>
+#include <pcap/pcap.h>
 
 TEST(basicTests, myTest)
 {
