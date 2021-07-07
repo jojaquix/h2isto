@@ -62,7 +62,7 @@ endfunction()
 function(Main)
 
     #common files for utests and binary
-    set(SRC_LIST stats/stats.h stats/stats.cpp)
+    set(SRC_LIST stats/stats.h plot/plot.h adq/adq.h stats/stats.cpp plot/plot.cpp adq/adq.cpp)
 
     generateDepsTargets()
     generateUnitTestTargets()

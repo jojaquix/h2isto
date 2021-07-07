@@ -7,6 +7,7 @@
 
 #include "datatypes.h"
 #include "stats/stats.h"
+#include "plot/plot.h"
 
 
 void generate_http_data(http_req_stats_t& http_req_stats) {
@@ -28,7 +29,7 @@ void generate_http_data(http_req_stats_t& http_req_stats) {
 }
 
 
-TEST(basicTests, histogramTest)
+TEST(basicTests, histogramGenTest)
 {
     http_req_stats_t http_req_stats;
     generate_http_data(http_req_stats);
@@ -40,5 +41,13 @@ TEST(basicTests, histogramTest)
     EXPECT_EQ(std::string("domain7.com"), http_req_histogram.back().first);
 }
 
+TEST(basicTests, histogramPlotTest)
+{
+    http_req_stats_t http_req_stats;
+    generate_http_data(http_req_stats);
+    http_req_histogram_t http_req_histogram;
+    auto total = generate_histogram(http_req_stats, http_req_histogram);
+    plot_histogram(http_req_histogram, total);
 
+}
 
