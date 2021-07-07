@@ -6,6 +6,8 @@ include(ExternalProject)
 
 enable_testing()
 
+set (CMAKE_CXX_STANDARD 11)
+
 
 function(generateDepsTargets)
     ExternalProject_Add(
@@ -40,16 +42,16 @@ endfunction()
 
 
 function(generateMain)
-    add_executable(h2isto Main.cpp)
-    target_include_directories(h2isto PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR})
+    add_executable(h2isto Main.cpp ${SRC_LIST})
+    target_include_directories(h2isto PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(h2isto PRIVATE
             ${LIBPCAP_LIB_DIR}/libpcap.a
             pthread)
 endfunction()
 
 function(generateUnitTestTargets)
-    add_executable(utests utests/UTests.cpp)
-    target_include_directories(utests PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR})
+    add_executable(utests utests/UTests.cpp ${SRC_LIST})
+    target_include_directories(utests PRIVATE ${GTEST_INC_DIR} ${LIBPCAP_INC_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(utests PRIVATE
             ${GTEST_LIB_DIR}/libgtest_main.a
             ${GTEST_LIB_DIR}/libgtest.a
@@ -58,6 +60,10 @@ function(generateUnitTestTargets)
 endfunction()
 
 function(Main)
+
+    #common files for utests and binary
+    set(SRC_LIST stats/stats.h stats/stats.cpp)
+
     generateDepsTargets()
     generateUnitTestTargets()
     generateMain()
