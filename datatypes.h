@@ -20,6 +20,7 @@ using http_counter_t = std::pair<std::string, uint32_t>;
 using http_req_stats_t = std::unordered_map<std::string, uint32_t>;
 
 // used for postprocessing stage a vector should be fine for now
+// may be later use pointers to the strings if performance is not enough
 using http_req_histogram_t = std::vector<http_counter_t>;
 
 

@@ -34,7 +34,7 @@ TEST(basicTests, histogramTest)
     generate_http_data(http_req_stats);
     http_req_histogram_t http_req_histogram;
     auto total = generate_histogram(http_req_stats, http_req_histogram);
-    EXPECT_EQ(678, total);
+    EXPECT_EQ(655, total);
     EXPECT_EQ(10, http_req_histogram.size());
     EXPECT_EQ("domain2.com", http_req_histogram[0].first);
     EXPECT_EQ(std::string("domain7.com"), http_req_histogram.back().first);
