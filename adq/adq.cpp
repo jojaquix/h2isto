@@ -7,6 +7,8 @@
 
 #include <unistd.h>
 
+#include <glog/logging.h>
+
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
 
@@ -96,19 +98,19 @@ void adq_init(std::string dev) {
 
     pcap_handle  = pcap_open_live(dev.c_str(), SNAP_LEN, 0, 1000, errbuf);
     if(pcap_handle == nullptr) {
-        std::cerr<<"error opening dev " << dev <<" " << errbuf << std::endl;
+        LOG(ERROR)<<"error opening dev " << dev <<" " << errbuf << std::endl;
         exit(EXIT_FAILURE);
     }
 
     if (pcap_lookupnet(dev.c_str(), &net, &mask, errbuf) == -1) {
-        std::cerr<<"error getting netmask" << std::endl;
+        LOG(ERROR)<<"error getting netmask" << std::endl;
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
         exit(EXIT_FAILURE);
     }
 
     if (pcap_setnonblock(pcap_handle, 1, errbuf) != 0) {
-        std::cerr<<"error setting nonblocking"  << std::endl;
+        LOG(ERROR)<<"error setting nonblocking"  << std::endl;
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
         exit(EXIT_FAILURE);
@@ -116,14 +118,14 @@ void adq_init(std::string dev) {
 
 
     if (pcap_compile(pcap_handle, &fp, filter_exp, 0, net) == -1) {
-        std::cerr<<"Couldn't parse filter "<< filter_exp <<" "<< pcap_geterr(pcap_handle) <<std::endl;
+        LOG(ERROR)<<"Couldn't parse filter "<< filter_exp <<" "<< pcap_geterr(pcap_handle) <<std::endl;
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
         exit(EXIT_FAILURE);
     }
 
     if (pcap_setfilter(pcap_handle, &fp) == -1) {
-        std::cerr<<"Couldn't install filter "<< filter_exp <<" "<< pcap_geterr(pcap_handle) <<std::endl;
+        LOG(ERROR)<<"Couldn't install filter "<< filter_exp <<" "<< pcap_geterr(pcap_handle) <<std::endl;
         pcap_freecode(&fp);
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
@@ -132,7 +134,7 @@ void adq_init(std::string dev) {
 
 
     if (pcap_set_timeout(pcap_handle, 1)== -1) {
-        std::cerr<<"Couldn't set time out" <<" "<< pcap_geterr(pcap_handle) <<std::endl;
+        LOG(ERROR)<<"Couldn't set time out" <<" "<< pcap_geterr(pcap_handle) <<std::endl;
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
         exit(EXIT_FAILURE);
@@ -142,7 +144,7 @@ void adq_init(std::string dev) {
     printf("Device: %s\n", dev.c_str());
     printf("Filter expression: %s\n", filter_exp);
 
-
+    LOG(INFO) << "Adq Initialized";
 
 }
 
@@ -161,11 +163,11 @@ void adq_process_packet(http_req_stats_t& http_req_stats) {
             usleep(150*1000);
             break;
         case -1 :
-            std::cerr << "pcap_dispach error.";
+            LOG(ERROR) << "pcap_dispach error.";
             exit(EXIT_FAILURE);
             break;
         case -2 :
-            std::cout << "pcap packet process break request";
+            LOG(INFO) << "pcap packet process break request";
             return;
             break;
     }
@@ -175,7 +177,6 @@ void adq_process_packet(http_req_stats_t& http_req_stats) {
 static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 
     static int count = 1;                   /* packet counter */
-
 
     /* declare pointers to packet headers */
     const struct sniff_ethernet *ethernet;  /* The ethernet header [1] */
@@ -200,64 +201,11 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
     ip = (struct sniff_ip*)(packet + SIZE_ETHERNET);
     size_ip = IP_HL(ip)*4;
     if (size_ip < 20) {
-        //printf("   * Invalid IP header length: %u bytes\n", size_ip);
         return;
     }
 
     std::string ip_srcs(inet_ntoa(ip->ip_src));
     std::string ip_dsts(inet_ntoa(ip->ip_dst));
-
-    /* print source and destination IP addresses */
-    //printf("       From: %s\n", ip_srcs.c_str());
-    //printf("         To: %s\n", ip_dsts.c_str());
-
-    /* determine protocol */
-    switch(ip->ip_p) {
-        case IPPROTO_TCP:
-            //printf("   Protocol: TCP\n");
-            break;
-        case IPPROTO_UDP:
-            //printf("   Protocol: UDP\n");
-            return;
-        case IPPROTO_ICMP:
-            //printf("   Protocol: ICMP\n");
-            return;
-        case IPPROTO_IP:
-            //printf("   Protocol: IP\n");
-            return;
-        default:
-            //printf("   Protocol: unknown\n");
-            return;
-    }
-
-    /*
-     *  OK, this packet is TCP.
-     */
-
-    /* define/compute tcp header offset */
-    tcp = (struct sniff_tcp*)(packet + SIZE_ETHERNET + size_ip);
-    size_tcp = TH_OFF(tcp)*4;
-    if (size_tcp < 20) {
-        //printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-        return;
-    }
-
-    //printf("   Src port: %d\n", ntohs(tcp->th_sport));
-    //printf("   Dst port: %d\n", ntohs(tcp->th_dport));
-
-    /* define/compute tcp payload (segment) offset */
-    payload = (const char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
-
-    /* compute tcp payload (segment) size */
-    size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
-
-    /*
-     * Print payload data; it might be binary, so don't just
-     * treat it as a string.
-     */
-    if (size_payload > 0) {
-       //printf("   Payload (%d bytes):\n", size_payload);
-    }
 
     (*http_req_stats)[ip_dsts]++;
 
