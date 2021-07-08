@@ -3,7 +3,7 @@ A simple Http request Histogram generator
 
 
 This project use gtest fot unit testing and libpcap for packet capture.
-**git**  and **github access**.
+**git**  and **github access** are necessary to download deps.
  
 **CMAKE** is used as generation tool and a C++11 compiler in any
 **linux** distribution should work fine for building.
