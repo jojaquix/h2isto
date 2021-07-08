@@ -25,7 +25,7 @@ cmake --build . --target h2isto
 
 
 ## How to use
-open two consoles and run ./h2isto 10 in one of then and curl xxxx in the other one.
+open two consoles and run ./h2isto 10 in one of them  and make curl xxxx in the other one.
 
 ## Todo
 * a better bpf filter
