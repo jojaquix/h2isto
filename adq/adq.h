@@ -11,7 +11,7 @@
 #include <pcap.h>
 
 
-void adq_init(char* dev);
+void adq_init(std::string dev = "");
 void adq_deinit();
 
 /**

@@ -88,14 +88,19 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
 
 /* implementation */
 
-void adq_init(char* dev) {
-    pcap_handle  = pcap_open_live(dev, SNAP_LEN, 0, 1000, errbuf);
+void adq_init(std::string dev) {
+
+    if(dev.empty()) {
+        dev = pcap_lookupdev(errbuf);
+    }
+
+    pcap_handle  = pcap_open_live(dev.c_str(), SNAP_LEN, 0, 1000, errbuf);
     if(pcap_handle == nullptr) {
         std::cerr<<"error opening dev " << dev <<" " << errbuf << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
+    if (pcap_lookupnet(dev.c_str(), &net, &mask, errbuf) == -1) {
         std::cerr<<"error getting netmask" << std::endl;
         pcap_close(pcap_handle);
         pcap_handle = nullptr;
@@ -132,6 +137,13 @@ void adq_init(char* dev) {
         pcap_handle = nullptr;
         exit(EXIT_FAILURE);
     }
+
+    /* print capture info */
+    printf("Device: %s\n", dev.c_str());
+    printf("Filter expression: %s\n", filter_exp);
+
+
+
 }
 
 void adq_deinit() {
@@ -142,28 +154,28 @@ void adq_deinit() {
 
 void adq_process_packet(http_req_stats_t& http_req_stats) {
 
-    int pcap_loop_ret = pcap_dispatch(pcap_handle, -1, (pcap_handler)adq_got_packet, nullptr);
+    int ret = pcap_dispatch(pcap_handle, -1, (pcap_handler)adq_got_packet, (u_char*)&http_req_stats);
 
-    switch (pcap_loop_ret) {
+    switch (ret) {
         case 0:
             usleep(150*1000);
             break;
         case -1 :
-            std::cerr << "pcap_dispach() error returned.";
+            std::cerr << "pcap_dispach error.";
             exit(EXIT_FAILURE);
             break;
         case -2 :
-            std::cout << "pcap packet process break requested";
+            std::cout << "pcap packet process break request";
             return;
             break;
     }
 }
 
 
-
 static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 
     static int count = 1;                   /* packet counter */
+
 
     /* declare pointers to packet headers */
     const struct sniff_ethernet *ethernet;  /* The ethernet header [1] */
@@ -171,11 +183,14 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
     const struct sniff_tcp *tcp;            /* The TCP header */
     const char *payload;                    /* Packet payload */
 
+    //getting stats
+    http_req_stats_t * http_req_stats = (http_req_stats_t *) args;
+
     int size_ip;
     int size_tcp;
     int size_payload;
 
-    printf("\nPacket number %d with length of [%d]:\n", count, header->len);
+    //printf("\nPacket number %d with length of [%d]:\n", count, header->len);
     count++;
 
     /* define ethernet header */
@@ -185,30 +200,33 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
     ip = (struct sniff_ip*)(packet + SIZE_ETHERNET);
     size_ip = IP_HL(ip)*4;
     if (size_ip < 20) {
-        printf("   * Invalid IP header length: %u bytes\n", size_ip);
+        //printf("   * Invalid IP header length: %u bytes\n", size_ip);
         return;
     }
 
+    std::string ip_srcs(inet_ntoa(ip->ip_src));
+    std::string ip_dsts(inet_ntoa(ip->ip_dst));
+
     /* print source and destination IP addresses */
-    printf("       From: %s\n", inet_ntoa(ip->ip_src));
-    printf("         To: %s\n", inet_ntoa(ip->ip_dst));
+    //printf("       From: %s\n", ip_srcs.c_str());
+    //printf("         To: %s\n", ip_dsts.c_str());
 
     /* determine protocol */
     switch(ip->ip_p) {
         case IPPROTO_TCP:
-            printf("   Protocol: TCP\n");
+            //printf("   Protocol: TCP\n");
             break;
         case IPPROTO_UDP:
-            printf("   Protocol: UDP\n");
+            //printf("   Protocol: UDP\n");
             return;
         case IPPROTO_ICMP:
-            printf("   Protocol: ICMP\n");
+            //printf("   Protocol: ICMP\n");
             return;
         case IPPROTO_IP:
-            printf("   Protocol: IP\n");
+            //printf("   Protocol: IP\n");
             return;
         default:
-            printf("   Protocol: unknown\n");
+            //printf("   Protocol: unknown\n");
             return;
     }
 
@@ -220,12 +238,12 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
     tcp = (struct sniff_tcp*)(packet + SIZE_ETHERNET + size_ip);
     size_tcp = TH_OFF(tcp)*4;
     if (size_tcp < 20) {
-        printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
+        //printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
         return;
     }
 
-    printf("   Src port: %d\n", ntohs(tcp->th_sport));
-    printf("   Dst port: %d\n", ntohs(tcp->th_dport));
+    //printf("   Src port: %d\n", ntohs(tcp->th_sport));
+    //printf("   Dst port: %d\n", ntohs(tcp->th_dport));
 
     /* define/compute tcp payload (segment) offset */
     payload = (const char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
@@ -238,8 +256,10 @@ static void adq_got_packet(u_char *args, const struct pcap_pkthdr *header, const
      * treat it as a string.
      */
     if (size_payload > 0) {
-        printf("   Payload (%d bytes):\n", size_payload);
+       //printf("   Payload (%d bytes):\n", size_payload);
     }
+
+    (*http_req_stats)[ip_dsts]++;
 
 }
 
